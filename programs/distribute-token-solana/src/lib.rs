@@ -47,6 +47,12 @@ pub mod distribute_token_solana {
             return Err(Errors::InvalidMerkleProof.into());
         }
 
+        if ctx.accounts.recipent_tokens.owner != claimer.key() {
+            return Err(Errors::InvalidOwner.into());
+        }
+
+        if ctx.accounts.claimer.is_signer
+
         //Mark claimed and send token
         status.amount = amount;
         status.is_claimed = true;
@@ -134,6 +140,10 @@ pub enum Errors {
 
     #[msg("Invalid Merkle proof")]
     InvalidMerkleProof,
+
+
+    #[msg("Invalid Owner")]
+    InvalidOwner,
 }
 
 pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
