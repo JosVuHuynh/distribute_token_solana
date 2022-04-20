@@ -51,8 +51,6 @@ pub mod distribute_token_solana {
             return Err(Errors::InvalidOwner.into());
         }
 
-        if ctx.accounts.claimer.is_signer
-
         //Mark claimed and send token
         status.amount = amount;
         status.is_claimed = true;
