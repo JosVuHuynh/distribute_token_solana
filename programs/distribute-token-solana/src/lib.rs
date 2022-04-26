@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount, Transfer, Mint, Token };
+use anchor_spl::token::{self, TokenAccount, Mint, Token };
 
 use anchor_lang::solana_program::pubkey::Pubkey;
 
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("GLfs2uXqmGoun5X4eTVxS7TcRPqw5dnsWvtEPzJzAq4v");
 
 #[program]
 pub mod distribute_token_solana {
@@ -76,9 +76,10 @@ pub mod distribute_token_solana {
 
 #[derive(Accounts)]
 pub struct NewDistributor<'info> {
+    #[account(mut)]
     pub distributor_key: Signer<'info>,
 
-    #[account(seeds = [distributor_key.key().to_bytes().as_ref()], bump)]
+    #[account(init, payer = distributor_key, space = 9000, seeds = [distributor_key.key().to_bytes().as_ref()], bump)]
     pub distributor: Account<'info, Distributor>,
 
     pub mint: Account<'info, Mint>,
