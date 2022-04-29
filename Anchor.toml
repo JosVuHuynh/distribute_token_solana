@@ -1,11 +1,11 @@
-[programs.devnet]
-distribute_token_solana = "5M7Ny1BpnSHrXNoHzb8tqgPJ5RTFH9twXzfQkrSscuh5"
+[programs.localnet]
+distribute_token_solana = "GLfs2uXqmGoun5X4eTVxS7TcRPqw5dnsWvtEPzJzAq4v"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/Users/vuhuynh/.config/solana/id.json"
 
 [scripts]

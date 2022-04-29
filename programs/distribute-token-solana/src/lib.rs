@@ -26,13 +26,13 @@ pub mod distribute_token_solana {
         Ok(())
     }
 
-    pub fn claim(ctx: Context<Claim>, index: u64, amount: u64, proof: Vec<[u8; 32]>) -> Result<()> {
+    pub fn claim(ctx: Context<Claim>,  _bump: u8, index: u64, amount: u64, proof: Vec<[u8; 32]>) -> Result<()> {
         //Check claim status
         let claimer = &ctx.accounts.claimer;
         let status = &mut ctx.accounts.status;
-        let distributor = &mut ctx.accounts.distributor;
+        let distributor = &ctx.accounts.distributor;
 
-        if !status.is_claimed {
+        if status.is_claimed {
             return Err(Errors::AlreadyClaimed.into());
         }
         
@@ -55,7 +55,12 @@ pub mod distribute_token_solana {
         status.amount = amount;
         status.is_claimed = true;
         status.claimer = claimer.key();
-        let seeds  = [&distributor.distributor_key.key().to_bytes(), &[distributor.bump][..],];
+        let seeds  = [ 
+            b"Distributor".as_ref(), 
+            &distributor.distributor_key.to_bytes(), 
+            //&[ctx.accounts.distributor.bump],
+            &[_bump]
+            ];
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -79,7 +84,16 @@ pub struct NewDistributor<'info> {
     #[account(mut)]
     pub distributor_key: Signer<'info>,
 
-    #[account(init, payer = distributor_key, space = 9000, seeds = [distributor_key.key().to_bytes().as_ref()], bump)]
+    #[account(
+        init, 
+        payer = distributor_key, 
+        space = 9000, 
+        seeds = [
+            b"Distributor".as_ref(),
+            distributor_key.key().to_bytes().as_ref()
+            ], 
+        bump
+    )]
     pub distributor: Account<'info, Distributor>,
 
     pub mint: Account<'info, Mint>,
@@ -98,8 +112,18 @@ pub struct Claim<'info> {
     #[account(mut)]
     pub recipent_tokens: Account<'info, TokenAccount>,
 
+    #[account(mut)]
     pub claimer: Signer<'info>,
 
+    #[account(
+        init, 
+        payer = claimer, 
+        seeds = [
+            b"Status".as_ref(), 
+            distributor.key().to_bytes().as_ref()
+            ], 
+        bump, 
+        space = 50)]
     pub status: Account<'info, Status>,
 
     pub token_program: Program<'info, Token>,
@@ -139,7 +163,6 @@ pub enum Errors {
 
     #[msg("Invalid Merkle proof")]
     InvalidMerkleProof,
-
 
     #[msg("Invalid Owner")]
     InvalidOwner,
