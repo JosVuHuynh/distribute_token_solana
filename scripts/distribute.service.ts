@@ -9,7 +9,8 @@ import { BorshService } from './borsh.service';
 import { HashService } from './hash.service';
 import MerkleTree from 'merkletreejs';
 import { sha256 } from 'js-sha256';
-
+import keccak256 from 'keccak256'
+ 
 
 
 //let connection = new Connection('https://api.devnet.solana.com', 'confirmed')
@@ -169,7 +170,7 @@ export async function claim(
         4000,
     )
 
-    let mintPubkey = new PublicKey('CzfAnhw6G969giBLe8hbjNaKQLBqM1spiVYfiKGMrnXQ');
+    let mintPubkey = new PublicKey('HYAVbi8sM1Nwdv7yjyKoW6fPp29XLCVTkdgdPXnPDCaN');
     const tokenAccountRecipent = Keypair.generate();
     
     //let claimer = Keypair.generate()
@@ -182,8 +183,8 @@ export async function claim(
       claimer.publicKey, // owner
       tokenAccountRecipent // token account (if you don't pass it, it will use ATA for you)
     );
-    const tokenAccountSender = new PublicKey("J8oMybR6PzJyFkHg4wXTVww5s3nhNdo4SkC74yEnDMkD");
-    const distributorAddress = new PublicKey("wrze25HGtifFt91QBfwZZZpzgAsxqxcEURc7eW35dvK")
+    const tokenAccountSender = new PublicKey("4oMD82bVkqrMbCrShDQVqJDMd1GSd5k1rj6a35wKqx6i");
+    const distributorAddress = new PublicKey("3yqZ4JyzjgpKPwESnJRDpjJGht4EFx8HRpmNwXtp9Se9")
     
     const [statusAddress, _bump] = await findStatusAddress(distributorAddress, programId);
 
@@ -229,23 +230,22 @@ export async function findStatusAddress(
 }
 
 
-
 const kpOne = Keypair.generate();
 const kpTwo = Keypair.generate();
 const kpThree = Keypair.generate();
 const claimer = Keypair.generate();
 
-const leaves = [claimer.publicKey.toString()].map(x => sha256(x))
+const leaves = [claimer.publicKey.toString()].map(x => keccak256(x))
 //const leaves  = [claimer.publicKey.toString()]
-const tree = new MerkleTree(leaves, sha256)
+const tree = new MerkleTree(leaves, keccak256)
 const root = tree.getRoot().toString('hex')
-const leaf = sha256(claimer.publicKey.toString())
+const leaf = keccak256(claimer.publicKey.toString())
 const proof = tree.getProof(leaf)
 console.log(root)
-console.log(proof)
 console.log(tree.verify(proof, leaf, root)) // true
 let buffer: Buffer[] = [];
 proof.forEach(x=> buffer.push(x.data))
+
 //createDistributor(254, Buffer.from(root), new BN(10), programId)
 claim(254, new BN(1),new BN(0), buffer)
 
