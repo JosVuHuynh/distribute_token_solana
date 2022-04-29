@@ -1,9 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Mint, Token };
-
 use anchor_lang::solana_program::pubkey::Pubkey;
-
-
 declare_id!("GLfs2uXqmGoun5X4eTVxS7TcRPqw5dnsWvtEPzJzAq4v");
 
 #[program]
@@ -38,10 +35,12 @@ pub mod distribute_token_solana {
         
         //Verify merkle proof
         let node = anchor_lang::solana_program::keccak::hashv(&[
-            &index.to_le_bytes(),
+            //&index.to_le_bytes(),
             &claimer.key().to_bytes(),
-            &amount.to_le_bytes(),
+            //&amount.to_le_bytes(),
         ]);
+
+       ;
 
         if !verify(proof, distributor.root, node.0) {
             return Err(Errors::InvalidMerkleProof.into());

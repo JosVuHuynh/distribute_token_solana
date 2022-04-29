@@ -54,7 +54,6 @@ const DISTRIBUTE_PROGRAM_LAYOUTS = {
         borsh.u8('bump'),
         borsh.u64('index'),
         borsh.u64('amount'),
-        //borsh.vec<Array<number>>(borsh.array<number>(borsh.u8,32), 'proof'),
         borsh.vec(borsh.array(borsh.u8(),32), 'proof')
     ])
 }
@@ -89,7 +88,7 @@ export async function createDistributor(
       );
     
       const tokenAccount = Keypair.generate();
-      console.log(`token account: ${tokenAccount.publicKey.toBase58()}`);
+      console.log(`token account sender ${tokenAccount.publicKey.toBase58()}`);
       const [distributorAddress, _bump] = await findDistributorAddress(payer.publicKey, programId);
 
       let tx = new Transaction().add(
@@ -110,24 +109,6 @@ export async function createDistributor(
         )
       );
       console.log(`txhash: ${await connection.sendTransaction(tx, [payer, tokenAccount])}`);
-    //   await mintTo(
-    //     connection,
-    //     payer,   
-    //     mintPubkey,
-    //     tokenAccount.publicKey,
-    //     payer,
-    //     100
-    //   )
-
-
-    // let tokenAccountSenderPubkey = await createAccount(
-    //     connection, // connection
-    //     payer, // fee payer
-    //     mintPubkey, // mint
-    //     payer.publicKey, // owner
-    //     payer // token account (if you don't pass it, it will use ATA for you)
-    // );
-
     const transaction: Transaction = new Transaction();
     const request: CreateDistributorRequest = {
         bump: bump,
@@ -146,7 +127,6 @@ export async function createDistributor(
 
     console.log("mintPubkey is", mintPubkey.toBase58())
     console.log("payer is", payer.publicKey.toBase58())
-    //console.log("tokenAccountSenderPubkey", tokenAccountSenderPubkey.toBase58())
     const keys: AccountMeta[] = [
         <AccountMeta>{pubkey: payer.publicKey, isSigner: true, isWritable: true },
         <AccountMeta>{pubkey: distributorAddress, isSigner: false, isWritable: true },
@@ -189,10 +169,10 @@ export async function claim(
         4000,
     )
 
-    let mintPubkey = new PublicKey('C2qytwym3dRdbeR8tzpuNHkB5qerUwdX6RTLPetC9Mv9');
+    let mintPubkey = new PublicKey('CzfAnhw6G969giBLe8hbjNaKQLBqM1spiVYfiKGMrnXQ');
     const tokenAccountRecipent = Keypair.generate();
     
-    let claimer = Keypair.generate()
+    //let claimer = Keypair.generate()
     await getAirdrop(claimer.publicKey)
 
     let tokenAccountRecipentPubkey = await createAccount(
@@ -202,30 +182,10 @@ export async function claim(
       claimer.publicKey, // owner
       tokenAccountRecipent // token account (if you don't pass it, it will use ATA for you)
     );
-    const tokenAccountSender = new PublicKey("47eKbxDKRAJSpmXHxShQ9TZ6brJL5PmJAtETudoU1s5c");
-    const distributorAddress = new PublicKey("7mVN1Tg3pH4VQdEZ7bm9samRY5oQLSTotzZMruQjmfQK")
+    const tokenAccountSender = new PublicKey("J8oMybR6PzJyFkHg4wXTVww5s3nhNdo4SkC74yEnDMkD");
+    const distributorAddress = new PublicKey("wrze25HGtifFt91QBfwZZZpzgAsxqxcEURc7eW35dvK")
     
     const [statusAddress, _bump] = await findStatusAddress(distributorAddress, programId);
-    // const [distributorAddress, _bump] = await findDistributorAddress(payer.publicKey, programId);
-    // console.log("distributorAddress is", distributorAddress.toString() );
-    //console.log("bump is", _bump)
-
-    //const accounts = await connection.getProgramAccounts(programId);
-    //console.log(accounts);
-    
-    // let tx = new Transaction().add(
-    //     // create token account
-    //     SystemProgram.createAccount({
-    //       fromPubkey: payer,
-    //       newAccountPubkey: status.publicKey,
-    //       space: ACCOUNT_SIZE,
-    //       lamports: await getMinimumBalanceForRentExemptAccount(connection),
-    //       programId: TOKEN_PROGRAM_ID,
-    //     }),
-    
-    //   );
-    //   console.log(`txhash: ${await connection.sendTransaction(tx, [status, status])}`);
-      
 
     const keys: AccountMeta[] = [
         <AccountMeta>{pubkey: distributorAddress, isSigner: false, isWritable: true},
@@ -268,38 +228,27 @@ export async function findStatusAddress(
     return PublicKey.findProgramAddress([prefix, distributorAddress.toBuffer()], distributeProgramId)
 }
 
-// export async function findProof(
-//     index: BN,
-//     amount: BN
-// ):Promise<string[]>{
-//     const kpOne = Keypair.generate();
-//     const kpTwo = Keypair.generate();
-//     const kpThree = Keypair.generate();
 
-//     const amountOne = new BN(100);
-//     const amountTwo = new BN(101);
-//     const amountThree = new BN(102);
 
-//     const tree = new BalanceTree([
-//         { account: kpOne.publicKey.toString(), amount: amountOne },
-//         { account: kpTwo.publicKey.toString(), amount: amountTwo }, 
-//         { account: kpThree.publicKey.toString(), amount: amountThree },
-//       ]);
-    
-//     const proof = tree.getProof(index, kpOne.publicKey.toString(), amount);
-//     return proof
-// }
+const kpOne = Keypair.generate();
+const kpTwo = Keypair.generate();
+const kpThree = Keypair.generate();
+const claimer = Keypair.generate();
 
-//createDistributor(254, Buffer.alloc(100), new BN(10), programId)
-
-const leaves = ['a', 'b', 'c'].map(x => sha256(x))
+const leaves = [claimer.publicKey.toString()].map(x => sha256(x))
+//const leaves  = [claimer.publicKey.toString()]
 const tree = new MerkleTree(leaves, sha256)
 const root = tree.getRoot().toString('hex')
-const leaf = sha256('a')
+const leaf = sha256(claimer.publicKey.toString())
 const proof = tree.getProof(leaf)
+console.log(root)
+console.log(proof)
 console.log(tree.verify(proof, leaf, root)) // true
+let buffer: Buffer[] = [];
+proof.forEach(x=> buffer.push(x.data))
+//createDistributor(254, Buffer.from(root), new BN(10), programId)
+claim(254, new BN(1),new BN(0), buffer)
 
-claim(254, new BN(1),new BN(0), [])
 
 
 
