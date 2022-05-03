@@ -99,12 +99,6 @@ export async function createDistributor(
         request,
         4000
     )
-    console.log('distributorAddress is ',distributorAddress.toBase58());
-    console.log('_bum is ', _bump);
-
-    console.log("mintPubkey is", mintPubkey.toBase58())
-    console.log("payer is", payer.publicKey.toBase58())
-
 
     const keys: AccountMeta[] = [
         <AccountMeta>{pubkey: payer.publicKey, isSigner: true, isWritable: true },
@@ -133,7 +127,8 @@ export async function claim(
     proof: Buffer[],
     _mintPubkey: PublicKey,
     _tokenAccountSender: PublicKey,
-    _distributeAddress: PublicKey
+    _distributeAddress: PublicKey,
+    claimer: Keypair
 
 ):Promise<void> {
     const tokenAccountSender = _tokenAccountSender
@@ -213,7 +208,6 @@ export async function findStatusAddress(
 
 export async function createAccountDistributor():Promise<CreateAccountDistributor>{
     let payer = Keypair.generate();
-    const tokenAccount = Keypair.generate();
 
     await getAirdrop(payer.publicKey)
     let mintPubkey = await createMint(
@@ -223,38 +217,31 @@ export async function createAccountDistributor():Promise<CreateAccountDistributo
         payer.publicKey, // freeze authority (you can use `null` to disable it. when you disable it, you can't turn it on again)
         8 // decimals
       );
-    const tokenAccountEx = await getOrCreateAssociatedTokenAccount(
-    connection,
-    payer,
-    mintPubkey,
-    payer.publicKey
-    )
-    
+
     const [distributorAddress, _bump] = await findDistributorAddress(payer.publicKey, programId);
-    let tx = new Transaction().add(
-    // create token account
-    SystemProgram.createAccount({
-        fromPubkey: payer.publicKey,
-        newAccountPubkey: tokenAccount.publicKey,
-        space: ACCOUNT_SIZE,
-        lamports: await getMinimumBalanceForRentExemptAccount(connection),
-        programId: TOKEN_PROGRAM_ID,
-    }),
-    // init mint account
-    createInitializeAccountInstruction(
-        tokenAccount.publicKey, // token account
-        mintPubkey, // mint
-        distributorAddress  //owner of token account
-        //payer.publicKey
-    )
+    
+    // Get the token account of the fromWallet address, and if it does not exist, create it
+    const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection,
+        payer,
+        mintPubkey,
+        distributorAddress,
+        true
     );
 
-    console.log(`txhash: ${await connection.sendTransaction(tx, [payer, tokenAccount])}`);
-
+    await mintTo(
+        connection,
+        payer,
+        mintPubkey,
+        fromTokenAccount.address,
+        payer,
+        1000000
+        );
+  
     let createAccountDistributor :CreateAccountDistributor = {
     mint: mintPubkey,
     payer: payer,
-    tokenAccountSender: tokenAccount.publicKey,
+    tokenAccountSender: fromTokenAccount.address,
     distributorAddress: distributorAddress,
     bump: _bump
     };
@@ -270,7 +257,7 @@ const claimer = Keypair.generate();
 const buf = Buffer.concat([
     new BN(1).toArrayLike(Buffer, "le", 8),
     claimer.publicKey.toBuffer(),
-    new BN(0).toArrayLike(Buffer, "le", 8),
+    new BN(10).toArrayLike(Buffer, "le", 8),
   ]);
 
 const leaves = [
@@ -278,14 +265,21 @@ const leaves = [
         Buffer.concat([
             new BN(1).toArrayLike(Buffer, "le", 8),
             claimer.publicKey.toBuffer(),
+            new BN(10).toArrayLike(Buffer, "le", 8),
+        ])
+    ),
+    keccak_256(
+        Buffer.concat([
+            new BN(2).toArrayLike(Buffer, "le", 8),
+            kpOne.publicKey.toBuffer(),
             new BN(0).toArrayLike(Buffer, "le", 8),
         ])
     ),
     keccak_256(
         Buffer.concat([
-            new BN(1).toArrayLike(Buffer, "le", 8),
-            kpOne.publicKey.toBuffer(),
-            new BN(0).toArrayLike(Buffer, "le", 8),
+            new BN(3).toArrayLike(Buffer, "le", 8),
+            kpTwo.publicKey.toBuffer(),
+            new BN(5).toArrayLike(Buffer, "le", 8),
         ])
     )
 ]
@@ -300,8 +294,14 @@ proof.forEach(x=> buffer.push(x.data))
 
 const main = async () => {
     const distributorAccount = await createAccountDistributor();
-    createDistributor(Buffer.from(root), new BN(10), programId, distributorAccount.mint, distributorAccount.payer, distributorAccount.distributorAddress, distributorAccount.bump)
-    claim(new BN(1),new BN(0), buffer, distributorAccount.mint, distributorAccount.tokenAccountSender, distributorAccount.distributorAddress)
+    await createDistributor(Buffer.from(root), new BN(10), programId, distributorAccount.mint, distributorAccount.payer, distributorAccount.distributorAddress, distributorAccount.bump)
+    await claim(new BN(1),new BN(10), buffer, distributorAccount.mint, distributorAccount.tokenAccountSender, distributorAccount.distributorAddress, claimer)
+    
+    const tokenAccountInfo = await getAccount(
+        connection,
+        distributorAccount.tokenAccountSender
+      )
+    console.log("token account after redeem is", tokenAccountInfo.amount);
 }
 
 main()
