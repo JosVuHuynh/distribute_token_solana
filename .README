@@ -1,6 +1,15 @@
-==================================================================================
-pubkey: BzX6D6Q7YLDwpbcCfi68FJY1rhDVbKg6g7wzhzdUR4hg
-==================================================================================
-Save this seed phrase and your BIP39 passphrase to recover your new keypair:
-main wall material door attend acoustic hotel action notable witness slogan reward
-==================================================================================
+
+### Build
+anchor build
+
+### Run local
+solana-test-validator
+
+### deploy on local:
+solana program deploy ~target/deploy/distribute_token_solana.so
+
+### npm install 
+npm i
+
+### run script
+ts-node scripts/distribute.service.ts
