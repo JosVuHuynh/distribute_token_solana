@@ -32,7 +32,12 @@ pub mod distribute_token_solana {
         if status.is_claimed {
             return Err(Errors::AlreadyClaimed.into());
         }
+
+        if distributor.total_claimed < amount {
+            return Err(Errors::MaxClaim.into());
+        }
         
+
         //Verify merkle proof
         let node = anchor_lang::solana_program::keccak::hashv(&[
             &index.to_le_bytes(),
@@ -162,6 +167,10 @@ pub enum Errors {
 
     #[msg("Invalid Owner")]
     InvalidOwner,
+
+    #[msg("Maximum claim amount")]
+    MaxClaim,
+
 }
 
 pub fn verify(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
