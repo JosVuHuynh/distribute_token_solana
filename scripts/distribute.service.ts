@@ -44,6 +44,11 @@ export class CreateAccountDistributor {
     bump: number
 }
 
+export class Claimer {
+    pubKey: PublicKey
+    amount: number
+}
+
 const DISTRIBUTE_PROGRAM_LAYOUTS = {
     CREATE_DISTRIBUTOR: <borsh.Layout<CreateDistributor>> borsh.struct([
         borsh.u8('bump'),
@@ -58,7 +63,6 @@ const DISTRIBUTE_PROGRAM_LAYOUTS = {
         borsh.vec(borsh.array(borsh.u8(),32), 'proof')
     ])
 }
-
 
 export async function getAirdrop(key: PublicKey) {
     const sig = await connection.requestAirdrop(
@@ -158,7 +162,6 @@ export async function claim(
       tokenAccountRecipent // token account (if you don't pass it, it will use ATA for you)
     );
   
-
     const keys: AccountMeta[] = [
         <AccountMeta>{pubkey: distributorAddress, isSigner: false, isWritable: true},
         <AccountMeta>{pubkey: tokenAccountSender, isSigner: false, isWritable: true},
@@ -201,7 +204,6 @@ export async function findStatusAddress(
     return PublicKey.findProgramAddress([prefix, distributorAddress.toBuffer(), claimer.toBuffer()], distributeProgramId)
 }
 
-
 export async function createAccountDistributor():Promise<CreateAccountDistributor>{
     let payer = Keypair.generate();
 
@@ -232,7 +234,7 @@ export async function createAccountDistributor():Promise<CreateAccountDistributo
         fromTokenAccount.address,
         payer,
         1000000
-        );
+    );
   
     let createAccountDistributor :CreateAccountDistributor = {
     mint: mintPubkey,
@@ -259,50 +261,56 @@ export function getProof(tree: MerkleTree, index: number) : Buffer[] {
     return buffer
 }
 
+export function claimersToLeaves(claimers: Claimer[]): Buffer[]{
+    let i = -1;
+    let leaves : Buffer[] = []
+    claimers.map(x =>  
+        leaves.push(Buffer.from(keccak256(Buffer.concat([
+            new BN(i+=1).toArrayLike(Buffer, "le", 8),
+            x.pubKey.toBuffer(),
+            new BN(x.amount).toArrayLike(Buffer, "le", 8),
+    ])))))
+    return leaves
+}
+
 const kpOne = Keypair.generate();
 const kpTwo = Keypair.generate();
 const kpThree = Keypair.generate();
 const claimer = Keypair.generate();
 
-const leaves = [
-   
-    Buffer.from(keccak256(Buffer.concat([
-        new BN(0).toArrayLike(Buffer, "le", 8),
-        claimer.publicKey.toBuffer(),
-        new BN(10).toArrayLike(Buffer, "le", 8),
-    ]))),
-
-    Buffer.from(keccak256(Buffer.concat([
-        new BN(1).toArrayLike(Buffer, "le", 8),
-        kpOne.publicKey.toBuffer(),
-        new BN(5).toArrayLike(Buffer, "le", 8),
-    ]))),
-
-    Buffer.from(keccak256(Buffer.concat([
-        new BN(2).toArrayLike(Buffer, "le", 8),
-        kpTwo.publicKey.toBuffer(),
-        new BN(15).toArrayLike(Buffer, "le", 8),
-    ]))),
-
-    Buffer.from(keccak256(Buffer.concat([
-        new BN(3).toArrayLike(Buffer, "le", 8),
-        kpThree.publicKey.toBuffer(),
-        new BN(20).toArrayLike(Buffer, "le", 8),
-    ]))),
+const claimers = [
+    {
+        pubKey: claimer.publicKey,
+        amount: 10
+    },
+    {
+        pubKey: kpOne.publicKey,
+        amount: 5
+    },
+    {
+        pubKey: kpTwo.publicKey,
+        amount: 15
+    },
+    {
+        pubKey: kpTwo.publicKey,
+        amount: 20
+    }
 ]
 
-
 const main = async () => {
-
+    const index = 0
+    const amount = 10
+    const max_claim = 10
+    const leaves = claimersToLeaves(claimers)
     const merkleTree = new MerkleTree(leaves)
     const root = merkleTree.root()
-    let proof =  getProof(merkleTree, 0)
+    let proof =  getProof(merkleTree, index)
 
-    const distributorAccount = await createAccountDistributor();
+    const distributorAccount = await createAccountDistributor()
 
     await createDistributor(
         root.hash,
-        new BN(10), 
+        new BN(max_claim), 
         programId, 
         distributorAccount.mint, 
         distributorAccount.payer, 
@@ -311,18 +319,14 @@ const main = async () => {
         )
 
     await claim(
-        new BN(0),
-        new BN(10), 
+        new BN(index),
+        new BN(amount), 
         proof, 
         distributorAccount.mint, 
         distributorAccount.tokenAccountSender, 
         distributorAccount.distributorAddress, 
         claimer
         )
-    const tokenAccountInfo = await getAccount(
-        connection,
-        distributorAccount.tokenAccountSender
-      )
 }
 
 main()
