@@ -37,7 +37,6 @@ pub mod distribute_token_solana {
             return Err(Errors::MaxClaim.into());
         }
         
-
         //Verify merkle proof
         let node = anchor_lang::solana_program::keccak::hashv(&[
             &index.to_le_bytes(),
@@ -121,7 +120,8 @@ pub struct Claim<'info> {
         payer = claimer, 
         seeds = [
             b"Status".as_ref(), 
-            distributor.key().to_bytes().as_ref()
+            distributor.to_account_info().key().to_bytes().as_ref(),
+            claimer.key().to_bytes().as_ref(),
             ], 
         bump, 
         space = 50)]

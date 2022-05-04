@@ -136,7 +136,7 @@ export async function claim(
     const distributorAddress = _distributeAddress
     let mintPubkey = _mintPubkey
 
-    const [statusAddress, _bump] = await findStatusAddress(distributorAddress, programId);
+    const [statusAddress, _bump] = await findStatusAddress(distributorAddress, claimer.publicKey, programId);
     
     const request: ClaimRequest = {
         bump: _bump,
@@ -199,11 +199,12 @@ export async function findDistributorAddress(
 
 export async function findStatusAddress(
     distributorAddress: PublicKey,
+    claimer: PublicKey,
     distributeProgramId: PublicKey,
   ): Promise<[PublicKey, number]> {
     const prefix: Buffer = Buffer.from("Status")
     console.log(prefix);
-    return PublicKey.findProgramAddress([prefix, distributorAddress.toBuffer()], distributeProgramId)
+    return PublicKey.findProgramAddress([prefix, distributorAddress.toBuffer(), claimer.toBuffer()], distributeProgramId)
 }
 
 
@@ -281,6 +282,7 @@ const leaves = [
         kpTwo.publicKey.toBuffer(),
         new BN(15).toArrayLike(Buffer, "le", 8),
     ]))),
+
     Buffer.from(keccak256(Buffer.concat([
         new BN(3).toArrayLike(Buffer, "le", 8),
         kpThree.publicKey.toBuffer(),
@@ -301,7 +303,6 @@ export function getProof(tree: MerkleTree, index: number) : Buffer[] {
     proofs.forEach(x=> buffer.push(x.hash))
     return buffer
 }
-
 
 const merkleTree = new MerkleTree(leaves)
 const root = merkleTree.root()
