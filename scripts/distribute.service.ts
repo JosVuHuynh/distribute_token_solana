@@ -1,17 +1,11 @@
 import { BN } from '@project-serum/anchor';
 import * as borsh from '@project-serum/borsh';
-import { ACCOUNT_SIZE, createAccount, createInitializeAccountInstruction, createMint, createMintToCheckedInstruction, getAccount,getMinimumBalanceForRentExemptAccount,getMint,getOrCreateAssociatedTokenAccount,mintTo,mintToChecked,TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { TokenPocketWalletName } from '@solana/wallet-adapter-wallets';
+import {  createAccount, createMint, getAccount,getOrCreateAssociatedTokenAccount,mintTo,TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { AccountMeta, Transaction, TransactionInstruction, PublicKey, Connection, Keypair, LAMPORTS_PER_SOL, sendAndConfirmTransaction, SystemProgram } from '@solana/web3.js';
 import { BorshService } from './borsh.service';
-import { HashService } from './hash.service';
-//import MerkleTree from 'merkletreejs';
 import { MerkleTree  } from './merkle_tree';
 import keccak256 from 'keccak256'
-import { keccak_256 } from "js-sha3";
  
-
-
 //let connection = new Connection('https://api.devnet.solana.com', 'confirmed')
 let connection = new Connection('http://127.0.0.1:8899', 'confirmed')
 let programId = new PublicKey('GLfs2uXqmGoun5X4eTVxS7TcRPqw5dnsWvtEPzJzAq4v')
@@ -251,17 +245,24 @@ export async function createAccountDistributor():Promise<CreateAccountDistributo
     return createAccountDistributor
 }
 
+export function getProof(tree: MerkleTree, index: number) : Buffer[] {
+    const nodes = tree.nodes();
+    const proofs = [];
+    let currentIndex = index;
+    for (let i = 0; i < nodes.length - 1; i++) {
+        const proof = currentIndex % 2 == 0 ? nodes[i][currentIndex + 1] : nodes[i][currentIndex - 1];
+        currentIndex = (currentIndex - (currentIndex % 2)) / 2;
+        proofs.push(proof);
+    }
+    let buffer: Buffer[] = [];
+    proofs.forEach(x=> buffer.push(x.hash))
+    return buffer
+}
+
 const kpOne = Keypair.generate();
 const kpTwo = Keypair.generate();
 const kpThree = Keypair.generate();
 const claimer = Keypair.generate();
-
-const buf =  Buffer.from(keccak256(Buffer.concat([
-    new BN(0).toArrayLike(Buffer, "le", 8),
-    claimer.publicKey.toBuffer(),
-    new BN(10).toArrayLike(Buffer, "le", 8),
-  ])));
-
 
 const leaves = [
    
@@ -290,26 +291,13 @@ const leaves = [
     ]))),
 ]
 
-export function getProof(tree: MerkleTree, index: number) : Buffer[] {
-    const nodes = tree.nodes();
-    const proofs = [];
-    let currentIndex = index;
-    for (let i = 0; i < nodes.length - 1; i++) {
-        const proof = currentIndex % 2 == 0 ? nodes[i][currentIndex + 1] : nodes[i][currentIndex - 1];
-        currentIndex = (currentIndex - (currentIndex % 2)) / 2;
-        proofs.push(proof);
-    }
-    let buffer: Buffer[] = [];
-    proofs.forEach(x=> buffer.push(x.hash))
-    return buffer
-}
-
-const merkleTree = new MerkleTree(leaves)
-const root = merkleTree.root()
-let proof =  getProof(merkleTree, 0)
-const leaf = buf
 
 const main = async () => {
+
+    const merkleTree = new MerkleTree(leaves)
+    const root = merkleTree.root()
+    let proof =  getProof(merkleTree, 0)
+
     const distributorAccount = await createAccountDistributor();
 
     await createDistributor(
@@ -335,7 +323,6 @@ const main = async () => {
         connection,
         distributorAccount.tokenAccountSender
       )
-    console.log("token account after redeem is", tokenAccountInfo.amount);
 }
 
 main()
